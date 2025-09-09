@@ -48,3 +48,30 @@ If the script runs successfully, it will save the predicted sentences to a text 
 
 ### Shutdown redis
 When you're done, you can shutdown the redis server from any terminal using `redis-cli shutdown`.
+
+## Comparing Language Models to Improve Accuracy
+A key way to improve the prediction accuracy of the brain-to-text system is to use a more powerful language model. The provided 1-gram language model does not incorporate any grammatical structure, while the 3-gram and 5-gram models do. To make it easy to see the impact of different language models on performance, we have provided the `run_evaluation.py` script.
+
+This script automates the entire evaluation process, including starting and stopping the Redis server and the language model subprocesses. It runs the evaluation for a given list of language models and then prints a summary table of the Word Error Rate (WER) for each, making it easy to compare their performance.
+
+### How to use `run_evaluation.py`
+To use the script, simply run it from the `model_training` directory and provide a list of the language models you want to evaluate.
+
+**Example: Compare the 1-gram and 3-gram language models**
+Make sure you have downloaded the 3-gram language model as described in the `language_model/README.md`.
+```bash
+conda activate b2txt25
+python run_evaluation.py --lm_names 1gram 3gram
+```
+
+The script will output the evaluation logs for each language model and then print a summary table like this:
+
+```
+--- Evaluation Summary ---
+Language Model       | Word Error Rate (%)
+-------------------------------------------
+1gram                | 25.43
+3gram                | 15.21
+```
+
+This provides a clear and easy way to see the improvement in prediction accuracy from using a better language model. You can also evaluate the 5-gram model by adding `5gram` to the `--lm_names` list, but be aware of its high RAM requirements.

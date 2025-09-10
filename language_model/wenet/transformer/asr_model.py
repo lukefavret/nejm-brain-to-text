@@ -184,6 +184,10 @@ class ASRModel(torch.nn.Module):
         decoding_chunk_size: int = -1,
         num_decoding_left_chunks: int = -1,
         simulate_streaming: bool = False,
+        uncond_model: Optional[torch.nn.Module] = None,
+        guidance_scale: float = 0.0,
+        ext_lm: Optional[torch.nn.Module] = None,
+        lm_weight: float = 0.0,
     ) -> torch.Tensor:
         """ Apply beam search on attention decoder
 
@@ -198,6 +202,10 @@ class ASRModel(torch.nn.Module):
                 0: used for training, it's prohibited here
             simulate_streaming (bool): whether do encoder forward in a
                 streaming fashion
+            uncond_model (Optional[torch.nn.Module]): unconditional text model for guidance
+            guidance_scale (float): guidance strength
+            ext_lm (Optional[torch.nn.Module]): external LM for fusion
+            lm_weight (float): external LM weight
 
         Returns:
             torch.Tensor: decoding result, (batch, max_result_len)
@@ -241,6 +249,14 @@ class ASRModel(torch.nn.Module):
             # logp: (B*N, vocab)
             logp, cache = self.decoder.forward_one_step(
                 encoder_out, encoder_mask, hyps, hyps_mask, cache)
+
+            if uncond_model is not None and guidance_scale > 0.0:
+                uncond_logp = uncond_model.log_probs(hyps)
+                logp = logp + guidance_scale * (logp - uncond_logp)
+
+            if ext_lm is not None and lm_weight != 0.0:
+                lm_logp = ext_lm.log_probs(hyps)
+                logp = logp + lm_weight * lm_logp
             # 2.2 First beam prune: select topk best prob at current time
             top_k_logp, top_k_index = logp.topk(beam_size)  # (B*N, N)
             top_k_logp = mask_finished_scores(top_k_logp, end_flag)
@@ -348,6 +364,10 @@ class ASRModel(torch.nn.Module):
                 0: used for training, it's prohibited here
             simulate_streaming (bool): whether do encoder forward in a
                 streaming fashion
+            uncond_model (Optional[torch.nn.Module]): unconditional text model for guidance
+            guidance_scale (float): guidance strength
+            ext_lm (Optional[torch.nn.Module]): external LM for fusion
+            lm_weight (float): external LM weight
 
         Returns:
             List[List[int]]: nbest results
@@ -433,6 +453,10 @@ class ASRModel(torch.nn.Module):
                 0: used for training, it's prohibited here
             simulate_streaming (bool): whether do encoder forward in a
                 streaming fashion
+            uncond_model (Optional[torch.nn.Module]): unconditional text model for guidance
+            guidance_scale (float): guidance strength
+            ext_lm (Optional[torch.nn.Module]): external LM for fusion
+            lm_weight (float): external LM weight
 
         Returns:
             List[int]: CTC prefix beam search nbest results
@@ -469,6 +493,10 @@ class ASRModel(torch.nn.Module):
                 0: used for training, it's prohibited here
             simulate_streaming (bool): whether do encoder forward in a
                 streaming fashion
+            uncond_model (Optional[torch.nn.Module]): unconditional text model for guidance
+            guidance_scale (float): guidance strength
+            ext_lm (Optional[torch.nn.Module]): external LM for fusion
+            lm_weight (float): external LM weight
             reverse_weight (float): right to left decoder weight
             ctc_weight (float): ctc score weight
 
